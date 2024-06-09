@@ -83,7 +83,10 @@ class EmoncmsClient:
             return feed_data[MESSAGE_KEY]
         return None
 
-    async def async_get_feed_fields(self, feed_id: int) -> list[str, Any]:
-        """Get all feed fields."""
+    async def async_get_feed_fields(self, feed_id: int) -> list[str, Any] | None:
+        """Get all fields for a single feed."""
         params = {"apikey": self.api_key, "id": feed_id}
-        return await self.async_request("/feed/aget.json", params=params)
+        feed_data = await self.async_request("/feed/aget.json", params=params)
+        if feed_data[SUCCESS_KEY]:
+            return feed_data[MESSAGE_KEY]
+        return None

@@ -92,7 +92,7 @@ class EmoncmsClient:
         uuid_data = await self.async_request("/user/getuuid.json")
         feed_data = await self.async_request("/feed/list.json")
         if not uuid_data[SUCCESS_KEY]:
-            message = "no uuid available" 
+            message = "no uuid available"
             message = f"{message} - migrate your emoncms sensor to a newer version"
             self.logger.warning(message)
         if feed_data[SUCCESS_KEY] and uuid_data[SUCCESS_KEY]:

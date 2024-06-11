@@ -1,15 +1,22 @@
-"""Emoncms client."""
+"""Emoncms client.
+
+emoncms feed module :
+an inexisting json route responds by {success: false, message : "Feed does not exist"}
+examples of inexisting json routes :
+- feed/aget.json?id=200 if there is no feed number 200
+- feed/basket.json 
+the feed/list.json always returns an array of json objects, which can be empty if there is no feed
+
+emoncms user module
+an inexisting json route responds by false which is not a json object
+so there is a type error if you search for a key in the response
+"""
 
 import asyncio
 import logging
 from typing import Any
 
 import aiohttp
-
-client_exceptions = (
-    aiohttp.ClientError,
-    asyncio.TimeoutError,
-)
 
 HTTP_STATUS = {
     400: "invalid request",
@@ -50,8 +57,13 @@ class EmoncmsClient:
                 response = await session.get(
                     path, timeout=self.request_timeout, params=params
                 )
-            except client_exceptions as e:
-                message = f"exception {e}"
+            except aiohttp.ClientError as er:
+                message = f"client error : {er}"
+                data[MESSAGE_KEY] = message
+                self.logger.error(message)
+                return data
+            except asyncio.TimeoutError:
+                message = "time out error"
                 data[MESSAGE_KEY] = message
                 self.logger.error(message)
                 return data
@@ -59,8 +71,13 @@ class EmoncmsClient:
                 data[SUCCESS_KEY] = True
                 json_response = await response.json()
                 data[MESSAGE_KEY] = json_response
-                if MESSAGE_KEY in json_response:
-                    data[MESSAGE_KEY] = json_response[MESSAGE_KEY]
+                try:
+                    if MESSAGE_KEY in json_response:
+                        data[MESSAGE_KEY] = json_response[MESSAGE_KEY]
+                except TypeError as er:
+                    message = f"type error : {er}"
+                    self.logger.error(message)
+                    data[SUCCESS_KEY] = False
             else:
                 message = f"error {response.status}"
                 if response.status in HTTP_STATUS:

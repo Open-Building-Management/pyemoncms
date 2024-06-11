@@ -74,9 +74,7 @@ class EmoncmsClient:
                 try:
                     if MESSAGE_KEY in json_response:
                         data[MESSAGE_KEY] = json_response[MESSAGE_KEY]
-                except TypeError as er:
-                    message = f"type error : {er}"
-                    self.logger.error(message)
+                except TypeError:
                     data[SUCCESS_KEY] = False
             else:
                 message = f"error {response.status}"
@@ -93,6 +91,10 @@ class EmoncmsClient:
         """
         uuid_data = await self.async_request("/user/getuuid.json")
         feed_data = await self.async_request("/feed/list.json")
+        if not uuid_data[SUCCESS_KEY]:
+            message = "no uuid available" 
+            message = f"{message} - migrate your emoncms sensor to a newer version"
+            self.logger.warning(message)
         if feed_data[SUCCESS_KEY] and uuid_data[SUCCESS_KEY]:
             for feed in feed_data[MESSAGE_KEY]:
                 feed["uuid"] = f"{uuid_data[MESSAGE_KEY]}_{feed['id']}"

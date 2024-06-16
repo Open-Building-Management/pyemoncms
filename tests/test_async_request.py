@@ -71,4 +71,3 @@ async def test_client_error():
     datas = await client.async_request("/feed/list.json")
     assert not datas["success"]
     assert "client error" in datas["message"]
-

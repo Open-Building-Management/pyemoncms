@@ -84,20 +84,21 @@ class EmoncmsClient:
                 self.logger.error(message)
         return data
 
-    async def async_list_feeds(self) -> list[dict[str, Any]] | None:
+    async def async_list_feeds(self, uuid: bool = False) -> list[dict[str, Any]] | None:
         """Request emoncms feeds list.
 
         return a uuid per feed if available
         """
-        uuid_data = await self.async_request("/user/getuuid.json")
         feed_data = await self.async_request("/feed/list.json")
-        if not uuid_data[SUCCESS_KEY]:
-            message = "no uuid available"
-            message = f"{message} - migrate your emoncms sensor to a newer version"
-            self.logger.warning(message)
-        if feed_data[SUCCESS_KEY] and uuid_data[SUCCESS_KEY]:
-            for feed in feed_data[MESSAGE_KEY]:
-                feed["uuid"] = f"{uuid_data[MESSAGE_KEY]}_{feed['id']}"
+        if uuid:
+            uuid_data = await self.async_request("/user/getuuid.json")
+            if not uuid_data[SUCCESS_KEY]:
+                message = "no uuid available"
+                message = f"{message} - migrate your emoncms sensor to a newer version"
+                self.logger.warning(message)
+            if feed_data[SUCCESS_KEY] and uuid_data[SUCCESS_KEY]:
+                for feed in feed_data[MESSAGE_KEY]:
+                    feed["uuid"] = f"{uuid_data[MESSAGE_KEY]}_{feed['id']}"
         if feed_data[SUCCESS_KEY]:
             return feed_data[MESSAGE_KEY]
         return None

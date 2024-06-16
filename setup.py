@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="pyemoncms",
-    version="0.0.5",
+    version="0.0.6",
     author="Alexandre CUER",
     author_email="alexandre.cuer@wanadoo.fr",
     description="A python library to interrogate emoncms API",
@@ -25,5 +25,5 @@ setuptools.setup(
     install_requires=[
         'aiohttp'
     ],
-    python_requires=">=3.10",
+    python_requires=">=3.9",
 )

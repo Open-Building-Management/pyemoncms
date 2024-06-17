@@ -33,5 +33,27 @@ loop.create_task(get_path("/user/getuuid.json"))
 loop.create_task(list_feeds())
 loop.create_task(list_feeds(uuid=True))
 loop.create_task(get_feed_fields(1))
-loop.run_forever()
+try:
+    loop.run_forever()
+except Exception:
+    client.logger.error("something happened")
+finally:
+    loop.run_until_complete(client.close())
+    loop.close()
+```
+
+even simpler with a context manager :
+
+```
+async def main():
+    """fetches somes datas in emoncms"""
+    async with EmoncmsClient(url, key, request_timeout=1) as client:
+        client.logger.setLevel("DEBUG")
+        print(await client.async_request("/feed/list.json"))
+        print(await client.async_request("/user/getuuid.json"))
+        print(await client.async_list_feeds())
+        print(await client.async_get_feed_fields(1))
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```

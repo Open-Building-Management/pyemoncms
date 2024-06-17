@@ -14,9 +14,9 @@ so there is a type error if you search for a key in the response
 
 import asyncio
 import logging
-from typing import Any
+from typing import Any, TypeVar
 
-import aiohttp
+from aiohttp import ClientError, ClientSession
 
 HTTP_STATUS = {
     400: "invalid request",
@@ -30,11 +30,15 @@ SUCCESS_KEY = "success"
 
 logging.basicConfig()
 
+Self = TypeVar("Self", bound="EmoncmsClient")
+
 
 class EmoncmsClient:
     """Emoncms client."""
 
     logger = logging.getLogger(__name__)
+    session: ClientSession | None = None
+    _close_session: bool = False
 
     def __init__(self, url: str, api_key: str, request_timeout: int = 20) -> None:
         """Initialize the client."""
@@ -52,36 +56,38 @@ class EmoncmsClient:
         data = {SUCCESS_KEY: False, MESSAGE_KEY: None}
         if not params:
             params = {"apikey": self.api_key}
-        async with aiohttp.ClientSession(self.url) as session:
+        if self.session is None:
+            self.session = ClientSession(self.url)
+            self._close_session = True
+        try:
+            response = await self.session.get(
+                path, timeout=self.request_timeout, params=params
+            )
+        except ClientError as er:
+            message = f"client error : {er}"
+            data[MESSAGE_KEY] = message
+            self.logger.error(message)
+            return data
+        except asyncio.TimeoutError:
+            message = "time out error"
+            data[MESSAGE_KEY] = message
+            self.logger.error(message)
+            return data
+        if response.status == 200:
+            data[SUCCESS_KEY] = True
+            json_response = await response.json()
+            data[MESSAGE_KEY] = json_response
             try:
-                response = await session.get(
-                    path, timeout=self.request_timeout, params=params
-                )
-            except aiohttp.ClientError as er:
-                message = f"client error : {er}"
-                data[MESSAGE_KEY] = message
-                self.logger.error(message)
-                return data
-            except asyncio.TimeoutError:
-                message = "time out error"
-                data[MESSAGE_KEY] = message
-                self.logger.error(message)
-                return data
-            if response.status == 200:
-                data[SUCCESS_KEY] = True
-                json_response = await response.json()
-                data[MESSAGE_KEY] = json_response
-                try:
-                    if MESSAGE_KEY in json_response:
-                        data[MESSAGE_KEY] = json_response[MESSAGE_KEY]
-                except TypeError:
-                    data[SUCCESS_KEY] = False
-            else:
-                message = f"error {response.status}"
-                if response.status in HTTP_STATUS:
-                    message = f"{message} {HTTP_STATUS[response.status]}"
-                data[MESSAGE_KEY] = message
-                self.logger.error(message)
+                if MESSAGE_KEY in json_response:
+                    data[MESSAGE_KEY] = json_response[MESSAGE_KEY]
+            except TypeError:
+                data[SUCCESS_KEY] = False
+        else:
+            message = f"error {response.status}"
+            if response.status in HTTP_STATUS:
+                message = f"{message} {HTTP_STATUS[response.status]}"
+            data[MESSAGE_KEY] = message
+            self.logger.error(message)
         return data
 
     async def async_list_feeds(self, uuid: bool = False) -> list[dict[str, Any]] | None:
@@ -110,3 +116,16 @@ class EmoncmsClient:
         if feed_data[SUCCESS_KEY]:
             return feed_data[MESSAGE_KEY]
         return None
+
+    async def close(self) -> None:
+        """Close open client session."""
+        if self.session and self._close_session:
+            await self.session.close()
+
+    async def __aenter__(self) -> Self:
+        """Async enter for context manager."""
+        return self
+
+    async def __aexit__(self, *_exc_info: object) -> None:
+        """Async exit for content manager."""
+        await self.close()

@@ -13,6 +13,7 @@ so there is a type error if you search for a key in the response
 """
 
 import asyncio
+from dataclasses import dataclass
 import logging
 from typing import Any, TypeVar
 
@@ -32,20 +33,16 @@ logging.basicConfig()
 
 Self = TypeVar("Self", bound="EmoncmsClient")
 
-
+@dataclass
 class EmoncmsClient:
     """Emoncms client."""
 
-    logger = logging.getLogger(__name__)
+    url: str = None
+    api_key: str = None
+    request_timeout: int = 20
     session: ClientSession | None = None
     _close_session: bool = False
-
-    def __init__(self, url: str, api_key: str, request_timeout: int = 20) -> None:
-        """Initialize the client."""
-        self.logger.info("Initializing Emoncms client")
-        self.api_key = api_key
-        self.url = url
-        self.request_timeout = request_timeout
+    logger = logging.getLogger(__name__)
 
     async def async_request(
         self, path: str, params: dict[str, Any] | None = None
@@ -57,11 +54,13 @@ class EmoncmsClient:
         if not params:
             params = {"apikey": self.api_key}
         if self.session is None:
-            self.session = ClientSession(self.url)
+            self.session = ClientSession()
             self._close_session = True
+        path = path.lstrip('/')
+        url= f'{self.url}/{path}'
         try:
             response = await self.session.get(
-                path, timeout=self.request_timeout, params=params
+                url, timeout=self.request_timeout, params=params
             )
         except ClientError as er:
             message = f"client error : {er}"

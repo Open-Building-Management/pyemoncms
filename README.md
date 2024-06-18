@@ -28,7 +28,7 @@ async def get_feed_fields(feed_id):
 
 
 loop = asyncio.get_event_loop()
-loop.create_task(get_path("/feed/list.json"))
+loop.create_task(get_path("feed/list.json"))
 loop.create_task(get_path("/user/getuuid.json"))
 loop.create_task(list_feeds())
 loop.create_task(list_feeds(uuid=True))

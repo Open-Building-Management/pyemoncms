@@ -20,8 +20,8 @@ client.logger.setLevel("DEBUG")
 async def get_path(path):
     print(await client.async_request(path))
 
-async def list_feeds(uuid=False):
-    print(await client.async_list_feeds(uuid=uuid))
+async def list_feeds():
+    print(await client.async_list_feeds())
     
 async def get_feed_fields(feed_id):
     print(await client.async_get_feed_fields(feed_id))
@@ -31,7 +31,6 @@ loop = asyncio.get_event_loop()
 loop.create_task(get_path("feed/list.json"))
 loop.create_task(get_path("/user/getuuid.json"))
 loop.create_task(list_feeds())
-loop.create_task(list_feeds(uuid=True))
 loop.create_task(get_feed_fields(1))
 try:
     loop.run_forever()

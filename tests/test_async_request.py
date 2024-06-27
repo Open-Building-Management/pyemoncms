@@ -67,7 +67,7 @@ async def test_timeout():
 
 async def test_client_error():
     """Test when IP exists but client not running."""
-    client = EmoncmsClient("http://127.0.0.1:8081", API_KEY)
+    client = EmoncmsClient("http://127.0.0.1:8087", API_KEY)
     datas = await client.async_request("/feed/list.json")
     assert not datas["success"]
     assert "client error" in datas["message"]

@@ -76,13 +76,6 @@ class EmoncmsClient:
             data[SUCCESS_KEY] = True
             json_response = await response.json()
             data[MESSAGE_KEY] = json_response
-            if json_response is False:
-                data[SUCCESS_KEY] = False
-            elif SUCCESS_KEY in json_response:
-                data = json_response
-                if not data[SUCCESS_KEY]:
-                    message = data[MESSAGE_KEY].replace("ADMIN", "EMONCMS ADMIN")
-                    self.logger.warning(message)
         else:
             message = f"error {response.status}"
             if response.status in HTTP_STATUS:
@@ -91,11 +84,28 @@ class EmoncmsClient:
             self.logger.error(message)
         return data
 
-    async def async_list_feeds(self) -> list[dict[str, Any]] | None:
-        """Request emoncms feeds list.
-
-        return a uuid per feed if available
+    async def async_get_uuid(self) -> str | None:
+        """Return the unique identifier or None.
+        
+        drop a warning during migration process from a non uuid emoncms to a uuid one
+        
+        this warns the user to do a database update
+        
+        first uuid version of emoncms is 11.5.7
         """
+        result = await self.async_request('/user/getuuid.json')
+        if result[SUCCESS_KEY]:
+            json_response = result[MESSAGE_KEY]
+            if json_response is False:
+                return None
+            if json_response[SUCCESS_KEY]:
+                return json_response[MESSAGE_KEY]
+            message = json_response[MESSAGE_KEY].replace("ADMIN", "EMONCMS ADMIN")
+            self.logger.warning(message)
+        return None
+
+    async def async_list_feeds(self) -> list[dict[str, Any]] | None:
+        """Request emoncms feeds list."""
         feed_data = await self.async_request("/feed/list.json")
         if feed_data[SUCCESS_KEY]:
             return feed_data[MESSAGE_KEY]

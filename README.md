@@ -48,8 +48,7 @@ async def main():
     """fetches somes datas in emoncms"""
     async with EmoncmsClient(url, key, request_timeout=1) as client:
         client.logger.setLevel("DEBUG")
-        print(await client.async_request("/feed/list.json"))
-        print(await client.async_request("/user/getuuid.json"))
+        print(await client.async_get_uuid())
         print(await client.async_list_feeds())
         print(await client.async_get_feed_fields(1))
 

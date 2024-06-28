@@ -100,7 +100,8 @@ class EmoncmsClient:
                 return None
             if json_response[SUCCESS_KEY]:
                 return json_response[MESSAGE_KEY]
-            message = json_response[MESSAGE_KEY].replace("ADMIN", "EMONCMS ADMIN")
+            message = json_response[MESSAGE_KEY]
+            message = f"{message} : {self.url}"
             self.logger.warning(message)
         return None
 

@@ -87,10 +87,6 @@ class EmoncmsClient:
     async def async_get_uuid(self) -> str | None:
         """Return the unique identifier or None.
         
-        drop a warning during migration process from a non uuid emoncms to a uuid one
-        
-        this warns the user to do a database update
-        
         first uuid version of emoncms is 11.5.7
         """
         result = await self.async_request('/user/getuuid.json')
@@ -102,7 +98,7 @@ class EmoncmsClient:
                 return json_response[MESSAGE_KEY]
             message = json_response[MESSAGE_KEY]
             message = f"{message} : {self.url}"
-            self.logger.warning(message)
+            self.logger.debug(message)
         return None
 
     async def async_list_feeds(self) -> list[dict[str, Any]] | None:

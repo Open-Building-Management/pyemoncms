@@ -14,8 +14,9 @@ so there is a type error if you search for a key in the response
 
 import asyncio
 from dataclasses import dataclass
+import json
 import logging
-from typing import Any, TypeVar
+from typing import Any, Dict, TypeVar, Optional
 
 from aiohttp import ClientError, ClientSession
 
@@ -83,6 +84,37 @@ class EmoncmsClient:
             data[MESSAGE_KEY] = message
             self.logger.error(message)
         return data
+
+    async def async_input_post(
+        self,
+        data: Dict[str, Any],
+        node: Optional[str] = None,
+        time: Optional[int] = None,
+        apikey: Optional[str] = None,
+    ) -> bool:
+        """Async post data to an emoncms input/node."""
+        if self.session is None:
+            self.session = ClientSession()
+            self._close_session = True
+
+        endpoint = f"{self.url.rstrip('/')}/input/post"
+        json_string = json.dumps(data)
+
+        effective_key = apikey if apikey is not None else self.api_key
+        if not effective_key:
+            raise ValueError("API key must be provided.")
+
+        params = {"apikey": effective_key, "json": json_string}
+        if node:
+            params["node"] = node
+        if time is not None:
+            params["time"] = str(time)
+
+        async with self.session.post(endpoint, params=params) as resp:
+            text = await resp.text()
+            if resp.status != 200:
+                raise RuntimeError(f"POST failed ({resp.status}): {text}")
+            return True
 
     async def async_get_uuid(self) -> str | None:
         """Return the unique identifier or None.

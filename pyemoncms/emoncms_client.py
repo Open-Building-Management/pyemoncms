@@ -104,7 +104,7 @@ class EmoncmsClient:
         if not effective_key:
             raise ValueError("API key must be provided.")
 
-        params = {"apikey": effective_key, "json": json_string}
+        params = {"apikey": effective_key, "fulljson": json_string}
         if node:
             params["node"] = node
         if time is not None:

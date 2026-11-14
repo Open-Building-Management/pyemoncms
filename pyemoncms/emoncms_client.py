@@ -32,8 +32,6 @@ HTTP_STATUS = {
 MESSAGE_KEY = "message"
 SUCCESS_KEY = "success"
 
-logging.basicConfig()
-
 Self = TypeVar("Self", bound="EmoncmsClient")
 
 

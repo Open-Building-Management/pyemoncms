@@ -12,6 +12,7 @@ import logging
 import asyncio
 from pyemoncms import EmoncmsClient
 
+logging.basicConfig()
 key = "your32bitsAPIkey"
 url = "http://url:8081"
 client = EmoncmsClient(url, key, request_timeout=1)

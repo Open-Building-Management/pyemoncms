@@ -12,13 +12,15 @@ an inexisting json route responds by false which is not a json object
 so there is a type error if you search for a key in the response
 """
 
+from __future__ import annotations
+
 import asyncio
 from dataclasses import dataclass
 import json
 import logging
-from typing import Any, Dict, TypeVar, Optional
+from typing import Any, Dict, TypeVar, Optional, cast
 
-from aiohttp import ClientError, ClientSession
+from aiohttp import ClientError, ClientSession, ClientTimeout
 
 HTTP_STATUS = {
     400: "invalid request",
@@ -51,8 +53,8 @@ class EmoncmsConnectionError(EmoncmsError):
 class EmoncmsClient:
     """Emoncms client."""
 
-    url: str = None
-    api_key: str = None
+    url: str = ""
+    api_key: str | None = None
     request_timeout: int = 20
     session: ClientSession | None = None
     _close_session: bool = False
@@ -75,7 +77,7 @@ class EmoncmsClient:
         url= f'{self.url}/{path}'
         try:
             response = await self.session.get(
-                url, timeout=self.request_timeout, params=params
+                url, timeout=ClientTimeout(total=self.request_timeout), params=params
             )
             if response.status == 200:
                 json_response = await response.json()
@@ -144,7 +146,7 @@ class EmoncmsClient:
 
         try:
             async with self.session.post(
-                endpoint, params=params, timeout=self.request_timeout
+                endpoint, params=params, timeout=ClientTimeout(total=self.request_timeout)
             ) as resp:
                 text = await resp.text()
                 status = resp.status
@@ -169,7 +171,7 @@ class EmoncmsClient:
             if json_response is False:
                 return None
             if json_response[SUCCESS_KEY]:
-                return json_response[MESSAGE_KEY]
+                return cast(str, json_response[MESSAGE_KEY])
             message = json_response[MESSAGE_KEY]
             message = f"{message} : {self.url}"
             self.logger.debug(message)
@@ -179,15 +181,15 @@ class EmoncmsClient:
         """Request emoncms feeds list."""
         feed_data = await self.async_request("/feed/list.json")
         if feed_data[SUCCESS_KEY]:
-            return feed_data[MESSAGE_KEY]
+            return cast(list[dict[str, Any]], feed_data[MESSAGE_KEY])
         return None
 
-    async def async_get_feed_fields(self, feed_id: int) -> list[str, Any] | None:
+    async def async_get_feed_fields(self, feed_id: int) -> list[Any] | None:
         """Get all fields for a single feed."""
         params = {"apikey": self.api_key, "id": feed_id}
         feed_data = await self.async_request("/feed/aget.json", params=params)
         if feed_data[SUCCESS_KEY]:
-            return feed_data[MESSAGE_KEY]
+            return cast(list[Any], feed_data[MESSAGE_KEY])
         return None
 
     async def close(self) -> None:
@@ -195,7 +197,7 @@ class EmoncmsClient:
         if self.session and self._close_session:
             await self.session.close()
 
-    async def __aenter__(self) -> Self:
+    async def __aenter__(self: Self) -> Self:
         """Async enter for context manager."""
         return self
 

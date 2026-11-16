@@ -5,3 +5,10 @@ from .emoncms_client import (
     EmoncmsConnectionError,
     EmoncmsError,
 )
+
+__all__ = [
+    "EmoncmsAuthError",
+    "EmoncmsClient",
+    "EmoncmsConnectionError",
+    "EmoncmsError",
+]

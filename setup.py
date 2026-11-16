@@ -22,6 +22,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ],
     packages=setuptools.find_packages(),
+    package_data={"pyemoncms": ["py.typed"]},
     install_requires=[
         'aiohttp'
     ],

@@ -77,8 +77,6 @@ class EmoncmsClient:
             response = await self.session.get(
                 url, timeout=self.request_timeout, params=params
             )
-            if response.status == 200:
-                json_response = await response.json()
         except ClientError as er:
             message = f"client error : {er}"
             data[MESSAGE_KEY] = message
@@ -95,6 +93,7 @@ class EmoncmsClient:
             return data
         if response.status == 200:
             data[SUCCESS_KEY] = True
+            json_response = await response.json()
             data[MESSAGE_KEY] = json_response
         else:
             message = f"error {response.status}"

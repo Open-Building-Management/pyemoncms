@@ -55,3 +55,22 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 ```
+
+## error handling
+
+By default, failures are returned as `{"success": False, "message": "..."}`
+(or `None` from the helpers). Pass `raise_errors=True` to get exceptions instead :
+
+```
+from pyemoncms import EmoncmsAuthError, EmoncmsClient, EmoncmsConnectionError, EmoncmsError
+
+client = EmoncmsClient(url, key, raise_errors=True)
+try:
+    feeds = await client.async_list_feeds()
+except EmoncmsAuthError:
+    ...  # invalid API key (HTTP 401)
+except EmoncmsConnectionError:
+    ...  # timeout or server unreachable
+except EmoncmsError:
+    ...  # any other error response
+```

@@ -34,6 +34,19 @@ logging.basicConfig()
 
 Self = TypeVar("Self", bound="EmoncmsClient")
 
+
+class EmoncmsError(Exception):
+    """Generic emoncms error."""
+
+
+class EmoncmsAuthError(EmoncmsError):
+    """Invalid API key (HTTP 401)."""
+
+
+class EmoncmsConnectionError(EmoncmsError):
+    """Emoncms server unreachable or timed out."""
+
+
 @dataclass
 class EmoncmsClient:
     """Emoncms client."""
@@ -43,6 +56,7 @@ class EmoncmsClient:
     request_timeout: int = 20
     session: ClientSession | None = None
     _close_session: bool = False
+    raise_errors: bool = False
     logger = logging.getLogger(__name__)
 
     async def async_request(
@@ -51,7 +65,7 @@ class EmoncmsClient:
         """Request emoncms server."""
         message = f"requesting emoncms on {path}"
         self.logger.debug(message)
-        data = {SUCCESS_KEY: False, MESSAGE_KEY: None}
+        data: dict[str, Any] = {SUCCESS_KEY: False, MESSAGE_KEY: None}
         if not params:
             params = {"apikey": self.api_key}
         if self.session is None:
@@ -66,12 +80,16 @@ class EmoncmsClient:
         except ClientError as er:
             message = f"client error : {er}"
             data[MESSAGE_KEY] = message
-            self.logger.error(message)
+            self._log_error(message)
+            if self.raise_errors:
+                raise EmoncmsConnectionError(message) from er
             return data
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as er:
             message = "time out error"
             data[MESSAGE_KEY] = message
-            self.logger.error(message)
+            self._log_error(message)
+            if self.raise_errors:
+                raise EmoncmsConnectionError(message) from er
             return data
         if response.status == 200:
             data[SUCCESS_KEY] = True
@@ -82,8 +100,21 @@ class EmoncmsClient:
             if response.status in HTTP_STATUS:
                 message = f"{message} {HTTP_STATUS[response.status]}"
             data[MESSAGE_KEY] = message
-            self.logger.error(message)
+            self._log_error(message)
+            self._raise_for_status(response.status, message)
         return data
+
+    def _log_error(self, message: str) -> None:
+        """Log at debug when raising, the caller decides how to report."""
+        self.logger.log(logging.DEBUG if self.raise_errors else logging.ERROR, message)
+
+    def _raise_for_status(self, status: int, message: str) -> None:
+        """Raise the matching exception when raise_errors is enabled."""
+        if not self.raise_errors:
+            return
+        if status == 401:
+            raise EmoncmsAuthError(message)
+        raise EmoncmsError(message)
 
     async def async_input_post(
         self,
@@ -110,11 +141,21 @@ class EmoncmsClient:
         if time is not None:
             params["time"] = str(time)
 
-        async with self.session.post(endpoint, params=params) as resp:
-            text = await resp.text()
-            if resp.status != 200:
-                raise RuntimeError(f"POST failed ({resp.status}): {text}")
-            return True
+        try:
+            async with self.session.post(
+                endpoint, params=params, timeout=self.request_timeout
+            ) as resp:
+                text = await resp.text()
+                status = resp.status
+        except (ClientError, asyncio.TimeoutError) as er:
+            if self.raise_errors:
+                raise EmoncmsConnectionError(f"POST failed : {er!r}") from er
+            raise
+        if status != 200:
+            message = f"POST failed ({status}): {text}"
+            self._raise_for_status(status, message)
+            raise RuntimeError(message)
+        return True
 
     async def async_get_uuid(self) -> str | None:
         """Return the unique identifier or None.
